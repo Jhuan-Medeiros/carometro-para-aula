@@ -33,7 +33,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
 
 app.use(session({
-    secret: session.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true,
     cookie: { secure: false }
@@ -59,7 +59,50 @@ app.post("/login", (req, res) => {
             if (!senhaCorreta) return res.status(500).send("Cpf ou senha incorreto")
             req.session.userId = usuario.idUsuarios;
             console.group("idUsuarios:", usuario.idUsuarios)
-            res.json({ message: "Login bem sucedido"})
+            res.json({ message: "Login bem sucedido" })
         }
     );
+})
+
+
+app.post("/cadastro", async(req, res) => {
+    const { nome, email, cpf, senha, celular, cep, logradouro, bairro, cidade, estado, imagem, Tipos_Usuarios_idTipos_Usuarios } = req.body;
+
+    cep = cep.replace(/-/g, "");
+
+    db.query(
+        "SELECT cpf FROM usuarios WHERE cpf=?", [cpf], async (err, results) => {
+            if (err) {
+                console.log("Erro ao consultar o cpf", err);
+
+                return res.status(500).json({ message: "Erro ao verificar o CPF" });
+            }
+            if (results.length > 0){
+                return res.status(400).json({message: "CPF já cadastrado"});
+            }
+
+            const senhacripto = await bcrypt.hash(senha, 10);
+
+            db.query("INSERT INTO usuarios (nome, email, cpf, senha, celular, cep, logradouro, bairro, cidade, estado, imagem, Tipos_Usuarios_idTipos_Usuarios) VALUES(?,?,?,?,?,?,?,?,?,?,?)");
+            [nome, email, cpf, senhacripto, celular, cep, logradouro, bairro, cidade, estado, imagem, Tipos_Usuarios_idTipos_Usuarios], (err, results) => {
+                if(err){
+                    console.error("Erro ao inserir usuário", err);
+                    return res.status(500).json({message: "Erro ao cadastrar usuário"})
+                }
+                console.log("Novo usuário inserido com sucesso:", result.idUsuarios)
+            }
+        }
+    )
+})
+
+
+app.use(express.static("src"));
+app.use(express.static(__dirname+"/src"));
+
+app.get("/login", (req, res) => {
+    res.sendFile(__dirname+"/src/login.html")
+})
+
+app.get("/cadastro", (req,res) => {
+    res.sendFile(_dirname + "/src/cadastroUsuario.html")
 })
